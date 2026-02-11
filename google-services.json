@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "249893574",
+    "project_id": "text-by-pabs",
+    "storage_bucket": "text-by-pabs.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249893574:android:4896627cfa731d5bb37dc7",
+        "android_client_info": {
+          "package_name": "com.pablo.textly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7IDM0dfnyBuuH8qzmjSL9e9C4HWzzE2M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249893574:android:b7a9e15ab26f4f40b37dc7",
+        "android_client_info": {
+          "package_name": "com.pablo.textlyy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7IDM0dfnyBuuH8qzmjSL9e9C4HWzzE2M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
