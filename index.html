@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>TEXTLY — Structured Chat + Status + Settings</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Poppins:wght@400;700&family=Nunito:wght@400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg-1:#5563DE; --bg-2:#8752D9;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+      --brand:#007aff;
+      --panel: rgba(255,255,255,.14);
+      --shadow: 0 8px 28px rgba(0,0,0,.25);
+      --radius: 16px;
+      --bubble-s:#dcf8c6; --bubble-r:#fff;
+    }
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{
+      margin:0; font-family:var(--font);
+      background:linear-gradient(120deg,var(--bg-1),var(--bg-2)); color:#111;
+    }
+    .app{ max-width:960px; margin:0 auto; min-height:100%; display:flex; flex-direction:column; position:relative; }
+
+    /* Header with nav icons */
+    header{
+      color:#fff; padding:10px 12px; display:flex; align-items:center; gap:10px;
+      background:linear-gradient(0deg, rgba(255,255,255,.08), rgba(255,255,255,.22));
+      backdrop-filter: blur(10px); position:sticky; top:0; z-index:10;
+    }
+    .title{ font-weight:800; letter-spacing:.3px }
+    .spacer{ flex:1 }
+    .nav-icon{
+      border:none; background:rgba(255,255,255,.2); color:#fff;
+      border-radius:12px; padding:8px 10px; cursor:pointer;
+    }
+    .nav-icon.active{ background:#fff; color:#111; }
+
+    /* Screens */
+    .screens{ position:relative; flex:1; overflow:hidden }
+    .screen{
+      position:absolute; inset:0; padding:14px; display:flex; flex-direction:column; gap:14px;
+      transform:translateX(120%); transition:transform .35s ease;
+    }
+    .screen.active{ transform:translateX(0); }
+    .hidden{ display:none !important; }
+
+    .panel{
+      background:var(--panel); border:1px solid rgba(255,255,255,.2);
+      box-shadow:var(--shadow); border-radius:var(--radius); padding:12px; color:#fff;
+    }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .row > input[type="text"], .row > input[type="email"], .row > input[type="password"], .row > textarea{
+      flex:1; min-width:200px; border:none; border-radius:10px; padding:12px; outline:none; background:#fff; color:#111; font-size:15px;
+    }
+    .btn{ border:none; border-radius:10px; padding:10px 12px; cursor:pointer }
+    .btn.primary{ background:var(--brand); color:#fff }
+    .btn.ghost{ background:rgba(255,255,255,.2); color:#fff }
+    .section-title{ font-weight:800; margin:6px 2px 4px }
+
+    .list{ max-height:42vh; overflow:auto }
+    .item{ display:flex; gap:10px; padding:10px; border-bottom:1px solid rgba(255,255,255,.2); cursor:pointer }
+    .item:last-child{ border-bottom:none }
+    .avatar{ width:44px; height:44px; border-radius:50%; overflow:hidden; background:#fff2; display:grid; place-items:center; color:#fff }
+    .avatar img{ width:100%; height:100%; object-fit:cover }
+
+    /* Chat detail */
+    .chat-head{ display:flex; align-items:center; gap:10px; padding:8px 6px; color:#fff; border-bottom:1px solid rgba(255,255,255,.2) }
+    .chat-name{ font-weight:800 }
+    .chat-area{ flex:1; overflow:auto; display:flex; flex-direction:column; gap:6px; padding:8px 2px }
+    .msg{ max-width:78%; background:#fff; color:#111; border-radius:14px; padding:8px 10px; box-shadow:0 1px 1px rgba(0,0,0,.08) }
+    .msg.sent{ align-self:flex-end; background:var(--bubble-s) }
+    .msg .ts{ display:block; font-size:10px; color:#666; margin-top:4px }
+
+    .composer{
+      display:flex; align-items:center; gap:8px; padding:8px 0; flex-wrap:wrap;
+    }
+    .composer .tool{
+      border:none; background:transparent; font-size:20px; cursor:pointer; color:#fff;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
+    }
+    .composer input[type="text"]{ flex:1; min-width:160px; border:none; border-radius:18px; padding:12px; outline:none }
+    .composer .btn.primary{ white-space:nowrap }
+
+    /* Status */
+    .status-feed{ display:flex; flex-direction:column; gap:10px; max-height:40vh; overflow:auto }
+    .status-card{ background:#fff; color:#111; border-radius:12px; padding:10px; box-shadow:0 1px 1px rgba(0,0,0,.1) }
+    .status-owner{ font-weight:700; margin-bottom:6px }
+    .status-media{ max-width:100%; border-radius:10px; display:block }
+
+    /* Settings sheet */
+    .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:opacity .25s; z-index:80 }
+    .overlay.open{ opacity:1; pointer-events:auto }
+    .sheet{
+      position:fixed; inset:auto 0 0 0; height:72%; transform:translateY(100%); transition:transform .3s ease; z-index:81;
+      background:#fff; color:#111; border-top-left-radius:18px; border-top-right-radius:18px; display:flex; flex-direction:column;
+      box-shadow:var(--shadow)
+    }
+    .sheet.open{ transform:translateY(0%) }
+    .sheet-header{ display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #eee }
+    .sheet-title{ font-weight:800 }
+    .sheet-body{ padding:12px; overflow:auto }
+    .swatches{ display:flex; gap:8px; flex-wrap:wrap }
+    .swatch{ width:28px; height:28px; border-radius:8px; border:1px solid rgba(0,0,0,.1); cursor:pointer }
+    .fonts{ display:flex; gap:8px; flex-wrap:wrap }
+    .font-btn{ border:1px solid #ddd; background:#fafafa; padding:8px 10px; border-radius:10px; cursor:pointer }
+    .savebar{ display:flex; justify-content:flex-end; gap:8px; padding:10px 12px; border-top:1px solid #eee }
+    .hint{ font-size:12px; opacity:.85 }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header>
+      <div class="title">TEXTLY</div>
+      <span class="spacer"></span>
+
+      <!-- nav icons -->
+      <button id="navChats" class="nav-icon" title="Chats">💬</button>
+      <button id="navStatus" class="nav-icon" title="Status">🟢</button>
+      <button id="navSettings" class="nav-icon" title="Settings">⚙️</button>
+      <button id="btnLogout" class="nav-icon" title="Logout" style="display:none">⎋</button>
+    </header>
+
+    <!-- Screens -->
+    <div class="screens">
+      <!-- AUTH -->
+      <section id="screenAuth" class="screen active">
+        <div class="panel" style="max-width:520px;margin:10px auto 0">
+          <div class="row" style="gap:10px">
+            <button id="tabLogin" class="btn" style="flex:1;background:#fff">Login</button>
+            <button id="tabSignup" class="btn" style="flex:1;background:transparent;border:1px solid #fff;color:#fff">Sign Up</button>
+          </div>
+
+          <div id="loginPane">
+            <div class="row"><input id="loginEmail" type="email" placeholder="Email"/></div>
+            <div class="row"><input id="loginPass" type="password" placeholder="Password"/></div>
+            <div class="row"><button id="btnLogin" class="btn primary" style="width:100%">Login</button></div>
+            <div class="hint">Forgot password? <a href="#" id="linkReset" style="color:#fff;text-decoration:underline">Reset</a></div>
+          </div>
+
+          <div id="signupPane" class="hidden">
+            <div class="row"><input id="signupEmail" type="email" placeholder="Email"/></div>
+            <div class="row"><input id="signupPass" type="password" placeholder="Password"/></div>
+            <div class="row"><button id="btnSignup" class="btn primary" style="width:100%">Create Account</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHATS HOME -->
+      <section id="screenChats" class="screen">
+        <div class="panel">
+          <div class="row">
+            <input id="userSearch" type="text" placeholder="Search users by email…"/>
+            <button id="btnNewChat" class="btn primary">New Chat</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">Recent Chats</div>
+          <div id="chatList" class="list"></div>
+        </div>
+      </section>
+
+      <!-- STATUS SCREEN -->
+      <section id="screenStatus" class="screen">
+        <div class="panel">
+          <div class="section-title">Post a Status</div>
+          <div class="row">
+            <textarea id="statusText" rows="3" placeholder="What’s on your mind?" style="flex:1;min-width:260px"></textarea>
+          </div>
+          <div class="row">
+            <input id="statusFile" type="file" accept="image/*,video/*"/>
+            <button id="postStatusBtn" class="btn primary">Post Status</button>
+          </div>
+          <div class="hint">Tip: attach an image or video (optional). Statuses expire after 24 hours.</div>
+        </div>
+
+        <div class="panel" id="myStatusPanel" style="display:none">
+          <div class="section-title">My Latest Status</div>
+          <div id="myStatus"></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">Recent Statuses</div>
+          <div id="statusFeed" class="status-feed"></div>
+        </div>
+      </section>
+
+      <!-- CHAT DETAIL -->
+      <section id="screenChatDetail" class="screen">
+        <div class="chat-head">
+          <button id="btnBack" class="btn">←</button>
+          <div id="chatAvatar" class="avatar" style="width:36px;height:36px"></div>
+          <div id="chatName" class="chat-name">Chat</div>
+          <span class="spacer"></span>
+        </div>
+
+        <div id="chatArea" class="chat-area"></div>
+
+        <!-- Composer with attach icons -->
+        <div class="composer">
+          <button id="btnImage" class="tool" title="Image">📷</button>
+          <button id="btnVideo" class="tool" title="Video">📹</button>
+          <button id="btnDoc" class="tool" title="Document">📄</button>
+          <button id="btnAudio" class="tool" title="Audio">🎵</button>
+
+          <input id="msgInput" type="text" placeholder="Type a message…"/>
+          <button id="btnSend" class="btn primary">Send</button>
+
+          <!-- hidden pickers -->
+          <input type="file" id="imageInput" accept="image/*" style="display:none"/>
+          <input type="file" id="videoInput" accept="video/*" style="display:none"/>
+          <input type="file" id="docInput" accept=".pdf,.doc,.docx" style="display:none"/>
+          <input type="file" id="audioInput" accept="audio/*" style="display:none"/>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="overlay" class="overlay"></div>
+  <div id="sheet" class="sheet" aria-modal="true" role="dialog">
+    <div class="sheet-header">
+      <div class="sheet-title">Settings</div>
+      <span class="spacer"></span>
+      <button id="sheetClose" class="btn">✕</button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="section-title">Profile Picture</div>
+      <div class="row" style="margin-bottom:10px">
+        <div id="meAvatar" class="avatar" style="width:64px;height:64px; background:#eee; color:#111">👤</div>
+        <input id="avatarInput" type="file" accept="image/*"/>
+        <button id="changeAvatarBtn" class="btn">Upload</button>
+      </div>
+
+      <div class="section-title">Background</div>
+      <div id="swatches" class="swatches" style="margin-bottom:6px"></div>
+      <div class="row"><input id="customColor" type="color" value="#5563DE" title="Primary color"/></div>
+
+      <div class="section-title">Font</div>
+      <div id="fontChoices" class="fonts">
+        <button class="font-btn" data-font="system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif">Default</button>
+        <button class="font-btn" data-font="'Inter', system-ui, -apple-system, Segoe UI, Roboto" style="font-family:'Inter',sans-serif">Inter</button>
+        <button class="font-btn" data-font="'Poppins', system-ui, -apple-system, Segoe UI, Roboto" style="font-family:'Poppins',sans-serif">Poppins</button>
+        <button class="font-btn" data-font="'Nunito', system-ui, -apple-system, Segoe UI, Roboto" style="font-family:'Nunito',sans-serif">Nunito</button>
+        <button class="font-btn" data-font="'Merriweather', Georgia, serif" style="font-family:'Merriweather',serif">Merriweather</button>
+      </div>
+    </div>
+
+    <div class="savebar">
+      <button id="resetPrefs" class="btn">Reset</button>
+      <button id="savePrefs" class="btn primary">Save</button>
+    </div>
+  </div>
+
+  <!-- Firebase + App -->
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+    import {
+      getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+      sendPasswordResetEmail, signOut
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+    import {
+      getFirestore, collection, doc, getDoc, setDoc, addDoc, query, where, orderBy, onSnapshot, getDocs, updateDoc, limit
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";
+
+    /* Firebase config (your project) */
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfsrEvRLqyqaPD9ypBx314u71i2J1SsHE",
+      authDomain: "textly-c9cbb.firebaseapp.com",
+      projectId: "textly-c9cbb",
+      storageBucket: "textly-c9cbb.firebasestorage.app",
+      messagingSenderId: "130520832234",
+      appId: "1:130520832234:web:10fd9319e46111cb39df93",
+      measurementId: "G-172YKCM75W"
+    };
+
+    if(!getApps().length) initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db   = getFirestore();
+
+    /* ---- DOM helpers ---- */
+    const $ = id => document.getElementById(id);
+    const screens = {
+      auth: $("screenAuth"),
+      chats: $("screenChats"),
+      status: $("screenStatus"),
+      chatDetail: $("screenChatDetail")
+    };
+    const nav = {
+      chats: $("navChats"),
+      status: $("navStatus"),
+      settings: $("navSettings")
+    };
+
+    function showScreen(name){
+      Object.values(screens).forEach(s=>s.classList.remove("active"));
+      screens[name].classList.add("active");
+
+      Object.values(nav).forEach(b=>b.classList.remove("active"));
+      if(name==="chats") nav.chats.classList.add("active");
+      if(name==="status") nav.status.classList.add("active");
+    }
+
+    function toast(m){ alert(m); }
+
+    const myEmail = () => auth.currentUser?.email ?? `anon:${auth.currentUser?.uid||"nouid"}@textly.local`;
+    const now = () => Date.now();
+    const cutoff24h = () => (Date.now() - 24*60*60*1000);
+    const ts = t => new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+    function escapeHtml(s){
+      return (s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    }
+
+    /* ---- Auth UI ---- */
+    $("tabLogin").addEventListener("click", ()=>{
+      $("loginPane").classList.remove("hidden");
+      $("signupPane").classList.add("hidden");
+    });
+
+    $("tabSignup").addEventListener("click", ()=>{
+      $("signupPane").classList.remove("hidden");
+      $("loginPane").classList.add("hidden");
+    });
+
+    $("btnLogin").addEventListener("click", async ()=>{
+      const email = $("loginEmail").value.trim();
+      const pass  = $("loginPass").value.trim();
+      if(!email || !pass) return toast("Enter email & password");
+      try{
+        await signInWithEmailAndPassword(auth, email, pass);
+      }catch(e){
+        toast(e.message);
+      }
+    });
+
+    $("btnSignup").addEventListener("click", async ()=>{
+      const email = $("signupEmail").value.trim();
+      const pass  = $("signupPass").value.trim();
+      if(!email || !pass) return toast("Enter email & password");
+      try{
+        const { user } = await createUserWithEmailAndPassword(auth,email,pass);
+        await setDoc(doc(db,"users", user.uid), { email:user.email, emoji:"😎", avatar:null, prefs:null });
+        toast("Account created");
+      }catch(e){
+        toast(e.message);
+      }
+    });
+
+    $("linkReset").addEventListener("click", async (e)=>{
+      e.preventDefault();
+      const email = prompt("Enter your email");
+      if(!email) return;
+      try{
+        await sendPasswordResetEmail(auth,email);
+        toast("Reset email sent");
+      }catch(er){
+        toast(er.message);
+      }
+    });
+
+    $("btnLogout").addEventListener("click", ()=> signOut(auth));
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        $("btnLogout").style.display="inline-block";
+        await ensureUserDoc(user);
+        await loadPrefs(user.uid);
+        loadChatsList();
+        loadStatusFeed();
+        loadMyLatestStatus();
+        showScreen("chats");
+      }else{
+        $("btnLogout").style.display="none";
+        showScreen("auth");
+      }
+    });
+
+    async function ensureUserDoc(user){
+      const ref = doc(db,"users", user.uid);
+      const snap = await getDoc(ref);
+      if(!snap.exists()){
+        await setDoc(ref, { email:user.email ?? myEmail(), emoji:"😀", avatar:null, prefs:null });
+      }
+      const data = (await getDoc(ref)).data();
+      if(data?.avatar){
+        $("meAvatar").innerHTML = `<img src="${data.avatar}">`;
+      }else{
+        $("meAvatar").textContent = "👤";
+      }
+    }
+
+    /* ---- Header Nav ---- */
+    nav.chats.addEventListener("click", ()=> showScreen("chats"));
+    nav.status.addEventListener("click", ()=> showScreen("status"));
+    nav.settings.addEventListener("click", ()=> openSettings());
+
+    /* ---- Settings ---- */
+    const overlay = $("overlay"), sheet = $("sheet");
+
+    function openSettings(){
+      overlay.classList.add("open");
+      sheet.classList.add("open");
+    }
+
+    function closeSettings(){
+      overlay.classList.remove("open");
+      sheet.classList.remove("open");
+    }
+
+    $("sheetClose").addEventListener("click", closeSettings);
+    overlay.addEventListener("click", closeSettings);
+
+    // Theme presets + custom color
+    const palettes = [
+      {a:"#5563DE", b:"#8752D9"}, {a:"#00c6ff", b:"#0072ff"},
+      {a:"#ff7e5f", b:"#feb47b"}, {a:"#11998e", b:"#38ef7d"},
+      {a:"#fc466b", b:"#3f5efb"}, {a:"#f7971e", b:"#ffd200"}
+    ];
+
+    const sw = $("swatches");
+    palettes.forEach(p=>{
+      const e=document.createElement("div");
+      e.className="swatch";
+      e.style.background = `linear-gradient(120deg, ${p.a}, ${p.b})`;
+      e.addEventListener("click", ()=> applyTheme(p.a,p.b));
+      sw.appendChild(e);
+    });
+
+    $("customColor").addEventListener("input", (e)=> applyTheme(e.target.value, "#111111"));
+
+    function applyTheme(a,b){
+      document.documentElement.style.setProperty("--bg-1", a);
+      document.documentElement.style.setProperty("--bg-2", b);
+    }
+
+    // Fonts
+    $("fontChoices").addEventListener("click", (e)=>{
+      const btn = e.target.closest(".font-btn");
+      if(!btn) return;
+      document.documentElement.style.setProperty("--font", btn.dataset.font);
+    });
+
+    // Save / Reset
+    $("savePrefs").addEventListener("click", async ()=>{
+      const s = getComputedStyle(document.documentElement);
+      const prefs = {
+        a: s.getPropertyValue("--bg-1").trim(),
+        b: s.getPropertyValue("--bg-2").trim(),
+        font: s.getPropertyValue("--font").trim()
+      };
+
+      localStorage.setItem("textly:prefs", JSON.stringify(prefs));
+
+      if(auth.currentUser){
+        try{
+          await updateDoc(doc(db,"users", auth.currentUser.uid), { prefs });
+        }catch{}
+      }
+
+      toast("Preferences saved");
+      closeSettings();
+    });
+
+    $("resetPrefs").addEventListener("click", ()=>{
+      applyTheme("#5563DE","#8752D9");
+      document.documentElement.style.setProperty("--font","system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif");
+    });
+
+    async function loadPrefs(uid){
+      try{
+        const snap = await getDoc(doc(db,"users", uid));
+        const data = snap.data() || {};
+        const p = data.prefs;
+
+        if(p){
+          if(p.a && p.b) applyTheme(p.a, p.b);
+          if(p.font) document.documentElement.style.setProperty("--font", p.font);
+        }
+
+        if(data.avatar){
+          $("meAvatar").innerHTML = `<img src="${data.avatar}">`;
+        }
+      }catch{}
+
+      // local storage fallback
+      const ls = localStorage.getItem("textly:prefs");
+      if(ls){
+        try{
+          const p = JSON.parse(ls);
+          if(p.a && p.b) applyTheme(p.a, p.b);
+          if(p.font) document.documentElement.style.setProperty("--font", p.font);
+        }catch{}
+      }
+    }
+
+    // Change profile pic
+    $("changeAvatarBtn").addEventListener("click", ()=> $("avatarInput").click());
+
+    $("avatarInput").addEventListener("change", async (e)=>{
+      const f = e.target.files?.[0];
+      if(!f || !auth.currentUser) return;
+
+      const reader = new FileReader();
+      reader.onload = async ev=>{
+        const dataUrl = ev.target.result;
+        $("meAvatar").innerHTML = `<img src="${dataUrl}">`;
+
+        try{
+          await updateDoc(doc(db,"users", auth.currentUser.uid), { avatar: dataUrl });
+          toast("Profile picture updated");
+        }catch{
+          await setDoc(doc(db,"users", auth.currentUser.uid), { email: myEmail(), avatar: dataUrl }, { merge:true });
+          toast("Profile picture updated");
+        }
+      };
+
+      reader.readAsDataURL(f);
+      e.target.value="";
+    });
+
+    /* ---- Status ---- */
+    $("postStatusBtn").addEventListener("click", async ()=>{
+      if(!auth.currentUser) return toast("Login first");
+
+      const text = $("statusText").value.trim();
+      const file = $("statusFile").files?.[0] || null;
+
+      const base = {
+        owner: myEmail(),
+        ownerUid: auth.currentUser.uid,
+        text: text || null,
+        media: null,
+        mediaType: null,
+        timestamp: now(),
+        expiresAt: now()+24*60*60*1000
+      };
+
+      const save = async (payload)=>{
+        await addDoc(collection(db,"statuses"), payload);
+        $("statusText").value="";
+        $("statusFile").value="";
+        toast("Status posted");
+        loadMyLatestStatus();
+        loadStatusFeed();
+      };
+
+      if(file){
+        const reader = new FileReader();
+        reader.onload = async ev=>{
+          const dataUrl = ev.target.result;
+          const mediaType = file.type.startsWith("video/") ? "video" : "image";
+          await save({...base, media:dataUrl, mediaType});
+        };
+        reader.readAsDataURL(file);
+      }else{
+        if(!text) return toast("Write something or attach media");
+        await save(base);
+      }
+    });
+
+    async function loadMyLatestStatus(){
+      if(!auth.currentUser){
+        $("myStatusPanel").style.display="none";
+        return;
+      }
+
+      const qy = query(
+        collection(db,"statuses"),
+        where("ownerUid","==", auth.currentUser.uid),
+        where("timestamp", ">", cutoff24h()),
+        orderBy("timestamp","desc"),
+        limit(1)
+      );
+
+      const snap = await getDocs(qy);
+      const wrap = $("myStatus");
+      wrap.innerHTML = "";
+
+      if(snap.empty){
+        $("myStatusPanel").style.display="none";
+        return;
+      }
+
+      $("myStatusPanel").style.display="block";
+
+      snap.forEach(docSnap=>{
+        const s = docSnap.data();
+        const card = document.createElement("div");
+        card.className="status-card";
+        card.innerHTML = `
+          <div class="status-owner">Me • ${new Date(s.timestamp).toLocaleString()}</div>
+          ${s.text ? `<div>${escapeHtml(s.text)}</div>`:""}
+          ${s.media ? (s.mediaType==="video"
+            ? `<video class="status-media" src="${s.media}" controls></video>`
+            : `<img class="status-media" src="${s.media}"/>`) : ""}
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    function liveStatusFeed(){
+      const qy = query(
+        collection(db,"statuses"),
+        where("timestamp", ">", cutoff24h()),
+        orderBy("timestamp","desc"),
+        limit(50)
+      );
+
+      return onSnapshot(qy, snap=>{
+        const feed = $("statusFeed");
+        feed.innerHTML = "";
+
+        snap.forEach(docSnap=>{
+          const s = docSnap.data();
+          const item = document.createElement("div");
+          item.className="status-card";
+          item.innerHTML = `
+            <div class="status-owner">${escapeHtml(s.owner||"User")} • ${new Date(s.timestamp).toLocaleString()}</div>
+            ${s.text ? `<div>${escapeHtml(s.text)}</div>` : ""}
+            ${s.media ? (s.mediaType==="video"
+              ? `<video class="status-media" src="${s.media}" controls></video>`
+              : `<img class="status-media" src="${s.media}"/>`) : ""}
+          `;
+          feed.appendChild(item);
+        });
+      });
+    }
+
+    let unsubStatus = null;
+    function loadStatusFeed(){
+      if(unsubStatus) unsubStatus();
+      unsubStatus = liveStatusFeed();
+    }
+
+    /* ---- Chats ---- */
+    let unsubConvos = null, unsubMsgs = null, currentConvo = null;
+
+    function loadChatsList(){
+      if(unsubConvos) unsubConvos();
+
+      const qConvos = query(
+        collection(db,"conversations"),
+        where("participants","array-contains", myEmail())
+      );
+
+      unsubConvos = onSnapshot(qConvos, async (snap)=>{
+        $("chatList").innerHTML = "";
+        const rows = [];
+        snap.forEach(d => rows.push({ id:d.id, ...d.data() }));
+
+        for(const c of rows){
+          let other = c.isGroup
+            ? (c.title||"Group")
+            : (c.participants.find(p=>p!==myEmail())||myEmail());
+
+          let avatar = "https://via.placeholder.com/80?text=%F0%9F%98%80";
+
+          if(!c.isGroup && other.includes("@")){
+            const qU = query(collection(db,"users"), where("email","==", other));
+            const sU = await getDocs(qU);
+
+            if(!sU.empty){
+              const u = sU.docs[0].data();
+              avatar = u.avatar || `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><text x='50%' y='52%' dominant-baseline='middle' text-anchor='middle' font-size='42'>${u.emoji||"👤"}</text></svg>`;
+              other = other.split("@")[0];
+            }
+          }
+
+          const row = document.createElement("div");
+          row.className="item";
+          row.innerHTML = `
+            <div class="avatar"><img src="${avatar}"/></div>
+            <div>
+              <div style="font-weight:700">${escapeHtml(other)}</div>
+              <div style="opacity:.85;font-size:12px">${c.isGroup ? "Group chat" : (c.participants.find(p=>p!==myEmail())||myEmail())}</div>
+            </div>
+          `;
+
+          row.addEventListener("click", ()=> openChat(c.id, other, avatar));
+          $("chatList").appendChild(row);
+        }
+      });
+    }
+
+    $("btnNewChat").addEventListener("click", async ()=>{
+      if(!auth.currentUser) return toast("Login first");
+
+      const email = $("userSearch").value.trim().toLowerCase()
+        || prompt("Enter the email to chat with:")?.trim().toLowerCase();
+
+      if(!email) return;
+      if(email===myEmail().toLowerCase()) return toast("You can't chat with yourself");
+
+      const qU = query(collection(db,"users"), where("email","==", email));
+      const sU = await getDocs(qU);
+      if(sU.empty) return toast("User not found");
+
+      // find existing 1:1 or create
+      const all = await getDocs(query(collection(db,"conversations")));
+      let id=null;
+
+      all.forEach(d=>{
+        const c=d.data();
+        if(!c.isGroup && c.participants?.length===2 && c.participants.includes(myEmail()) && c.participants.includes(email)){
+          id=d.id;
+        }
+      });
+
+      if(!id){
+        const ref = await addDoc(collection(db,"conversations"), {
+          isGroup:false,
+          participants:[myEmail(), email],
+          createdAt: now()
+        });
+        id = ref.id;
+      }
+
+      openChat(id, email.split("@")[0], "https://via.placeholder.com/80?text=%F0%9F%98%80");
+    });
+
+    function openChat(id, name, avatar){
+      currentConvo = id;
+
+      $("chatName").textContent = name;
+      $("chatAvatar").innerHTML = `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover">`;
+
+      showScreen("chatDetail");
+
+      if(unsubMsgs) unsubMsgs();
+
+      const qMsgs = query(
+        collection(db,"conversations", id, "messages"),
+        orderBy("timestamp","asc")
+      );
+
+      unsubMsgs = onSnapshot(qMsgs, snap=>{
+        $("chatArea").innerHTML="";
+
+        snap.forEach(d=>{
+          const m = d.data();
+          const el = document.createElement("div");
+          el.className = "msg" + (m.sender===myEmail() ? " sent" : "");
+
+          if(m.type === "text"){
+            el.innerHTML = `${escapeHtml(m.content||"")}<span class="ts">${ts(m.timestamp)}</span>`;
+          } else if(m.type === "image"){
+            el.innerHTML = `<img src="${m.content}" style="max-width:240px;border-radius:12px;display:block"/><span class="ts">${ts(m.timestamp)}</span>`;
+          } else if(m.type === "video"){
+            el.innerHTML = `<video src="${m.content}" controls style="max-width:240px;border-radius:12px;display:block"></video><span class="ts">${ts(m.timestamp)}</span>`;
+          } else if(m.type === "document"){
+            el.innerHTML = `<a href="${m.content}" target="_blank">Open document</a><span class="ts">${ts(m.timestamp)}</span>`;
+          } else if(m.type === "audio"){
+            el.innerHTML = `<audio src="${m.content}" controls></audio><span class="ts">${ts(m.timestamp)}</span>`;
+          } else {
+            el.innerHTML = `${escapeHtml(m.content||"[Unsupported]")}<span class="ts">${ts(m.timestamp)}</span>`;
+          }
+
+          $("chatArea").appendChild(el);
+        });
+
+        $("chatArea").scrollTop = $("chatArea").scrollHeight;
+      });
+    }
+
+    $("btnBack").addEventListener("click", ()=>{
+      if(unsubMsgs) unsubMsgs();
+      currentConvo=null;
+      showScreen("chats");
+      $("chatArea").innerHTML="";
+    });
+
+    $("btnSend").addEventListener("click", async ()=>{
+      const t = $("msgInput").value.trim();
+      if(!t || !currentConvo) return;
+
+      await addDoc(collection(db,"conversations", currentConvo, "messages"), {
+        sender: myEmail(),
+        type:"text",
+        content:t,
+        timestamp: now()
+      });
+
+      $("msgInput").value="";
+    });
+
+    /* Attach buttons */
+    $("btnImage").addEventListener("click", ()=> $("imageInput").click());
+    $("btnVideo").addEventListener("click", ()=> $("videoInput").click());
+    $("btnDoc").addEventListener("click", ()=> $("docInput").click());
+    $("btnAudio").addEventListener("click", ()=> $("audioInput").click());
+
+    function pickAndSend(fileInput, type){
+      const file = fileInput.files?.[0];
+      if(!file || !currentConvo) return;
+
+      const reader = new FileReader();
+      reader.onload = async ev=>{
+        const message = {
+          sender: myEmail(),
+          type,
+          content: ev.target.result,
+          timestamp: now()
+        };
+        await addDoc(collection(db,"conversations", currentConvo, "messages"), message);
+      };
+
+      reader.readAsDataURL(file);
+      fileInput.value="";
+    }
+
+    $("imageInput").addEventListener("change", e=> pickAndSend(e.target, "image"));
+    $("videoInput").addEventListener("change", e=> pickAndSend(e.target, "video"));
+    $("docInput").addEventListener("change", e=> pickAndSend(e.target, "document"));
+    $("audioInput").addEventListener("change", e=> pickAndSend(e.target, "audio"));
+  </script>
+</body>
+</html>
